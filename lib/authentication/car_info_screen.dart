@@ -1,21 +1,20 @@
-import 'package:driver_app/authentication/login_screen.dart';
 import 'package:flutter/material.dart';
 
-import 'car_info_screen.dart';
-
-class SignUpScreen extends StatefulWidget
+class CarInfoScreen extends StatefulWidget
 {
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  State<CarInfoScreen> createState() => _CarInfoScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen>
+class _CarInfoScreenState extends State<CarInfoScreen>
 {
-  TextEditingController nameTextEditingController = TextEditingController();
-  TextEditingController emailTextEditingController = TextEditingController();
-  TextEditingController phoneTextEditingController = TextEditingController();
-  TextEditingController passwordTextEditingController = TextEditingController();
+  TextEditingController carModelTextEditingController = TextEditingController();
+  TextEditingController carNumberTextEditingController = TextEditingController();
+  TextEditingController carColorTextEditingController = TextEditingController();
+
+  List<String> carTypesList = ["uber-x", "uber-go", "bike"]; // SUBJECT TO CHANGE LATER
+  String? selectedCarType;
 
   @override
   Widget build(BuildContext context) {
@@ -27,12 +26,15 @@ class _SignUpScreenState extends State<SignUpScreen>
 
             const SizedBox(height: 60,),
 
-            Image.asset("images/texastechlogo.jpeg"),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Image.asset("images/texastechlogo.jpeg"),
+            ),
 
             const SizedBox(height: 40,),
 
             const Text(
-                "Register as a Driver",
+                "Write Car Details",
                 style: TextStyle(
                   fontSize: 26,
                   color: Colors.white,
@@ -41,19 +43,17 @@ class _SignUpScreenState extends State<SignUpScreen>
                 )
             ),
 
-            const SizedBox(
-              height: 15,
-            ),
+            const SizedBox(height: 15,),
 
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 15),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 25),
               child: TextField(
-                controller: nameTextEditingController,
+                controller: carModelTextEditingController,
                 style: const TextStyle(
                   color: Colors.red, //colors text
                 ),
                 decoration: const InputDecoration(
-                  labelText: "Name",
+                  labelText: "Car Model",
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.red, width: 2),
                   ),
@@ -69,16 +69,16 @@ class _SignUpScreenState extends State<SignUpScreen>
                 ),
               ),
             ), // Name Field
+
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 15),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 25),
               child: TextField(
-                controller: emailTextEditingController,
-                keyboardType: TextInputType.emailAddress,
+                controller: carNumberTextEditingController,
                 style: const TextStyle(
                   color: Colors.red, //colors text
                 ),
                 decoration: const InputDecoration(
-                  labelText: "Email",
+                  labelText: "Car Number",
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.red, width: 2),
                   ),
@@ -94,16 +94,16 @@ class _SignUpScreenState extends State<SignUpScreen>
                 ),
               ),
             ), // Email Field
+
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 15),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 25),
               child: TextField(
-                controller: phoneTextEditingController,
-                keyboardType: TextInputType.phone,
+                controller: carColorTextEditingController,
                 style: const TextStyle(
                   color: Colors.red, //colors text
                 ),
                 decoration: const InputDecoration(
-                  labelText: "Phone",
+                  labelText: "Car Color",
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.red, width: 2),
                   ),
@@ -119,64 +119,55 @@ class _SignUpScreenState extends State<SignUpScreen>
                 ),
               ),
             ), // Phone Field
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 15),
-              child: TextField(
-                controller: passwordTextEditingController,
-                keyboardType: TextInputType.text,
-                obscureText: true,
-                style: const TextStyle(
-                  color: Colors.red, //colors text
-                ),
-                decoration: const InputDecoration(
-                  labelText: "Password",
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.red, width: 2),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.red, width: 2),
-                  ),
-                  labelStyle: TextStyle(
-                    color: Color(0xEEEEEEFF),
-                    fontSize: 15,
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.bold,
+
+            const SizedBox(height: 15,),
+
+            DropdownButtonHideUnderline(
+              child: DropdownButton(
+                iconSize: 25,
+                dropdownColor: Colors.black,
+                hint: const Text(
+                  "Car Type\t\t\t",
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    color: Colors.grey,
                   ),
                 ),
+                value: selectedCarType,
+                onChanged: (newValue)
+                  {
+                    setState(() {
+                      selectedCarType = newValue.toString();
+                    });
+                  },
+                items: carTypesList.map((car) {
+                  return DropdownMenuItem(
+                    value: car,
+                    child: Text(
+                      car,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }).toList(),
               ),
-            ), // Pass Field
+            ),
+
+            const SizedBox(height: 15,),
 
             ElevatedButton(
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (c) => CarInfoScreen()));
               },
               child: const Text(
-                "Create Account",
+                "Save Now",
                 style: TextStyle(
                   color: Colors.black54,
                   fontSize: 18,
                 ),
               ),
             ),
-
-            MaterialButton(
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              onPressed: () {  },
-              child: TextButton(
-                child: const Text(
-                  "Already have an account? Login Here",
-                  style: TextStyle(color: Colors.white, decoration: TextDecoration.underline),
-                ),
-                onPressed: ()
-                {
-                  Navigator.push(context, MaterialPageRoute(builder: (c) => LoginScreen()));
-                },
-              ),
-            ),
-
           ],
-        )
+        ),
       ),
     );
   }
