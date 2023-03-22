@@ -1,5 +1,7 @@
 import 'package:driver_app/authentication/login_screen.dart';
+import 'package:driver_app/widgets/progress_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import 'car_info_screen.dart';
 
@@ -16,6 +18,37 @@ class _SignUpScreenState extends State<SignUpScreen>
   TextEditingController emailTextEditingController = TextEditingController();
   TextEditingController phoneTextEditingController = TextEditingController();
   TextEditingController passwordTextEditingController = TextEditingController();
+
+  validateForm()
+  {
+    if(nameTextEditingController.text.length < 3)
+      {
+        Fluttertoast.showToast(msg: "Name must be at least 3 Characters");
+      }
+    else if(!emailTextEditingController.text.contains("@ttu.edu"))
+      {
+        Fluttertoast.showToast(msg: "Please register with a valid TTU email");
+      }
+    else if(phoneTextEditingController.text.isEmpty || phoneTextEditingController.text.length < 10)
+    {
+      Fluttertoast.showToast(msg: "A Phone number is required and must be valid");
+    }
+    else if(passwordTextEditingController.text.length < 6)
+    {
+      Fluttertoast.showToast(msg: "Password Must be at least 6 characters");
+    }
+    else
+    {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext c)
+          {
+            return ProgressDialog(message: "Processing, Please Wait....");
+          }
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +181,7 @@ class _SignUpScreenState extends State<SignUpScreen>
 
             ElevatedButton(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (c) => CarInfoScreen()));
+                validateForm();
               },
               child: const Text(
                 "Create Account",
