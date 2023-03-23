@@ -18,7 +18,7 @@ class _MySplashScreenState extends State<MySplashScreen>
 {
   startTimer()
   {
-    Timer(const Duration(seconds: 3), () async
+    Timer(const Duration(seconds: 3), ()
     {
       //sends the user to a new screen
       Navigator.push(context, MaterialPageRoute(builder: (c) => LoginScreen()));
