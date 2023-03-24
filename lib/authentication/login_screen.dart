@@ -1,5 +1,12 @@
 import 'package:driver_app/authentication/signup_screen.dart';
+import 'package:driver_app/splashScreen/splash_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+
+import '../global/global.dart';
+import '../widgets/progress_dialog.dart';
+import 'car_info_screen.dart';
 
 class LoginScreen extends StatefulWidget
 {
@@ -12,6 +19,59 @@ class _LoginScreenState extends State<LoginScreen>
 {
   TextEditingController emailTextEditingController = TextEditingController();
   TextEditingController passwordTextEditingController = TextEditingController();
+
+  validateForm()
+  {
+    if(!emailTextEditingController.text.contains("@ttu.edu"))
+    {
+      Fluttertoast.showToast(msg: "Please register with a valid TTU email");
+    }
+    else if(passwordTextEditingController.text.isEmpty)
+    {
+      Fluttertoast.showToast(msg: "Password is Required.");
+    }
+    else
+    {
+      loginDriverInfoNow();
+    }
+  }
+
+  void loginDriverInfoNow() async
+  {
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext c)
+        {
+          return ProgressDialog(message: "Logging in, Please Wait....");
+        }
+    );
+
+    final User? firebaseUser = (
+        await fAuth.signInWithEmailAndPassword(
+          email: emailTextEditingController.text.trim(),
+          password: passwordTextEditingController.text.trim(),
+        ).catchError((msg){
+          Navigator.pop(context);
+          Fluttertoast.showToast(msg: "Incorrect Username or Password!");
+        })
+    ).user;
+
+    if(firebaseUser != null)
+    {
+      currentFirebaseUser = firebaseUser;
+      Fluttertoast.showToast(msg: "Login Successful. ");
+
+      // ignore: use_build_context_synchronously
+      Navigator.push(context, MaterialPageRoute(builder: (c) => const MySplashScreen()));
+    }
+    else
+    {
+      // ignore: use_build_context_synchronously
+      Navigator.pop(context);
+      Fluttertoast.showToast(msg: "Error Occurred during Login. ");
+    }
+  }
 
 
   @override
@@ -98,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen>
             ElevatedButton(
               onPressed: ()
               {
-
+                validateForm();
               },
               child: const Text(
                 "Login",
