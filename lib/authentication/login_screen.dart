@@ -1,12 +1,11 @@
 import 'package:driver_app/authentication/signup_screen.dart';
 import 'package:driver_app/splashScreen/splash_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-
-import '../global/global.dart';
-import '../widgets/progress_dialog.dart';
-import 'car_info_screen.dart';
+import 'package:driver_app/global/global.dart';
+import 'package:driver_app/widgets/progress_dialog.dart';
 
 class LoginScreen extends StatefulWidget
 {
@@ -59,11 +58,23 @@ class _LoginScreenState extends State<LoginScreen>
 
     if(firebaseUser != null)
     {
-      currentFirebaseUser = firebaseUser;
-      Fluttertoast.showToast(msg: "Login Successful. ");
-
-      // ignore: use_build_context_synchronously
-      Navigator.push(context, MaterialPageRoute(builder: (c) => const MySplashScreen()));
+      DatabaseReference driversRef = FirebaseDatabase.instance.ref().child("drivers");
+      driversRef.child(firebaseUser.uid).once().then((driverKey)
+      {
+        final snap = driverKey.snapshot;
+        if(snap.value != null)
+        {
+          currentFirebaseUser = firebaseUser;
+          Fluttertoast.showToast(msg: "Login Successful.");
+          Navigator.push(context, MaterialPageRoute(builder: (c) => const MySplashScreen()));
+        }
+        else
+        {
+          Fluttertoast.showToast(msg: "There is no record of this user as a driver");
+          fAuth.signOut();
+          Navigator.push(context, MaterialPageRoute(builder: (c) => const MySplashScreen()));
+        }
+      });
     }
     else
     {
