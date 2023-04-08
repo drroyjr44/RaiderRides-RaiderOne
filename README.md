@@ -27,5 +27,5 @@ INTEL HAXM
 
 ## to install packages required (CMD):
 -flutter packages get
--flutter packages upgrade)
+-flutter packages upgrade
 
