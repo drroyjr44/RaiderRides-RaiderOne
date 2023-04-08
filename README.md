@@ -1,6 +1,6 @@
-# Raider One Rides 
+# Raider One Rides (Driver App)
 
-This is a project for our Senior Capstone Projects
+This is a project for our Senior Capstone Project
 
 
 ## Authors
