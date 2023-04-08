@@ -1,16 +1,31 @@
-# driver_app
+# Raider One Rides 
 
-A new Flutter project.
+This is a project for our Senior Capstone Projects
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
+## Authors
+Jerome Cala
+Arjun Ramsinghani
+Dylan Sheehan
+Isman Daijrov
+Jacobie Rowland
+Arnob Roy
+### Required Environments
 
-A few resources to get you started if this is your first Flutter project:
+Dart SDK
+Android Studio
+Flutter SDK
+INTEL HAXM 
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Websites to download from:
+
+- [Android Studio](https://developer.android.com/studio?gclid=Cj0KCQjw8qmhBhClARIsANAtboedAVY-2aw-cjeB_Qq_5gbvRiw_rUTpPTQM5SqSMbWY5GzT9srqceAaAmbeEALw_wcB&gclsrc=aw.ds)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install)
+- [Dart SDK] (cmd run: choco install dart on )
+
+
+## to install packages required (CMD):
+-flutter packages get
+-flutter packages upgrade)
+
