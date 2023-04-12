@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:driver_app/global/global.dart';
+import 'package:driver_app/push_notifications/push_notification_system.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -213,7 +214,6 @@ class _HomeTabPageState extends State<HomeTabPage> {
     }
   }
 
-
   locateDriverPosition() async
   {
     Position cPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
@@ -229,11 +229,21 @@ class _HomeTabPageState extends State<HomeTabPage> {
     print("this is your address = $humanReadableAddress");
   }
 
+  readCurrentDriverInformation() async
+  {
+    currentFirebaseUser = fAuth.currentUser;
+    PushNotificationSystem pushNotificationSystem = PushNotificationSystem();
+    pushNotificationSystem.initializeCloudMessaging();
+    pushNotificationSystem.generateAndGetToken();
+
+  }
+
   @override
   void initState() {
     super.initState();
 
     checkIfLocationPermissionAllowed();
+    readCurrentDriverInformation();
   }
 
   @override
