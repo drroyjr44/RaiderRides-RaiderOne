@@ -13,7 +13,7 @@ Raider Ride is composed of 2 sub-applications to fulfill its total functionality
 - Jerome Cala
 - Arjun Ramsinghani
 - Dylan Sheehan
-- Isman Daijrov
+- Isman Daiyrov
 - Jacobie Rowland
 - Arnob Roy
 
