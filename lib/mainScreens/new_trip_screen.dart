@@ -1,10 +1,20 @@
 import 'dart:async';
 
+import 'package:driver_app/assistants/assistant_methods.dart';
+import 'package:driver_app/global/global.dart';
 import 'package:driver_app/models/user_ride_request_information.dart';
+import 'package:driver_app/widgets/progress_dialog.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_geofire/flutter_geofire.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../assistants/black_theme_google_map.dart';
+import '../infoHandler/app_info.dart';
 
 class NewTripScreen extends StatefulWidget
 {
@@ -32,27 +42,288 @@ class _NewTripScreenState extends State<NewTripScreen>
   String? buttonTitle = "Arrived";
   Color? buttonColor = Colors.green;
 
+  Set<Marker> setOfMarkers = Set<Marker>();
+  Set<Circle> setOfCircle = Set<Circle>();
+  Set<Polyline> setOfPolyline = Set<Polyline>();
+  List<LatLng> polyLinePositionCoordinates = [];
+  PolylinePoints polylinePoints = PolylinePoints();
+
+  double mapPadding = 0;
+  BitmapDescriptor? iconAnimatedMarker;
+  var geoLocator = Geolocator();
+  Position? onlineDriverCurrentPosition;
+
+  String rideRequestStatus = "accepted";
+
+  String durationFromOriginToDestination = "";
+
+  bool isRequestDirectionDetails = false;
+
+
+  // 1. when driver accepts user ride request
+  // originLatLng = where driver current location
+  // destinationLatLng = user pickup location
+
+  // 2. driver already picked up user
+  // originLatLng = user pickup location => now driver current location
+  // destinationLatLng = user dropoff location
+
+  Future<void> drawPolyLineFromOriginToDestination(LatLng originLatLng, LatLng destinationLatLng) async
+  {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => ProgressDialog(message: "Please wait..."),
+    );
+
+    var directionDetailsInfo = await AssistantMethods.obtainOriginToDestinationDirectionDetails(originLatLng, destinationLatLng);
+
+    PolylinePoints pPoints = PolylinePoints();
+    List<PointLatLng> decodedPolylinePointsResultList = pPoints.decodePolyline(directionDetailsInfo!.e_points!);
+
+    polyLinePositionCoordinates.clear();
+
+    if(decodedPolylinePointsResultList.isNotEmpty)
+    {
+      decodedPolylinePointsResultList.forEach((PointLatLng pointLatLng)
+      {
+        polyLinePositionCoordinates.add(LatLng(pointLatLng.latitude, pointLatLng.longitude));
+      });
+    }
+
+    setOfPolyline.clear();
+
+    setState(() {
+      Polyline polyline = Polyline(
+        color: Colors.blue,
+        polylineId: const PolylineId("PolylineID"),
+        jointType: JointType.round,
+        points: polyLinePositionCoordinates,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+        geodesic: true,
+      );
+
+      setOfPolyline.add(polyline);
+    });
+
+    LatLngBounds boundsLatLng;
+
+    if(originLatLng.latitude > destinationLatLng.latitude && originLatLng.longitude > destinationLatLng.longitude)
+    {
+      boundsLatLng = LatLngBounds(southwest: destinationLatLng, northeast: originLatLng);
+    }
+
+    else if(originLatLng.longitude > destinationLatLng.longitude)
+    {
+      boundsLatLng = LatLngBounds(
+        southwest: LatLng(originLatLng.latitude, destinationLatLng.longitude),
+        northeast: LatLng(destinationLatLng.latitude, originLatLng.longitude),
+      );
+    }
+
+    else if(originLatLng.latitude > destinationLatLng.latitude)
+    {
+      boundsLatLng = LatLngBounds(
+        southwest: LatLng(destinationLatLng.latitude, originLatLng.longitude),
+        northeast: LatLng(originLatLng.latitude, destinationLatLng.longitude),
+      );
+    }
+    else
+    {
+      boundsLatLng = LatLngBounds(southwest: originLatLng, northeast: destinationLatLng);
+    }
+
+    newTripGoogleMapController!.animateCamera(CameraUpdate.newLatLngBounds(boundsLatLng, 65));
+
+    Marker originMarker = Marker(
+      markerId: const MarkerId("originID"),
+      position: originLatLng,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+    );
+
+    Marker destinationMarker = Marker(
+      markerId: const MarkerId("destinationID"),
+      position: destinationLatLng,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+    );
+
+    setState(() {
+      setOfMarkers.add(originMarker);
+      setOfMarkers.add(destinationMarker);
+    });
+
+    Circle originCircle = Circle(
+      circleId:  const CircleId("originID"),
+      fillColor: Colors.cyan,
+      radius: 12,
+      strokeWidth: 3,
+      strokeColor: Colors.white,
+      center: originLatLng,
+    );
+
+    Circle destinationCircle = Circle(
+      circleId:  const CircleId("destinationID"),
+      fillColor: Colors.red,
+      radius: 12,
+      strokeWidth: 3,
+      strokeColor: Colors.white,
+      center: destinationLatLng,
+    );
+
+    setState(() {
+      setOfCircle.add(originCircle);
+      setOfCircle.add(destinationCircle);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    saveAssignedDriverDetailsToUserRideRequest();
+  }
+
+  createDriverIconMarker()
+  {
+    if(iconAnimatedMarker == null)
+    {
+      ImageConfiguration imageConfiguration = createLocalImageConfiguration(context, size: const Size(2, 2));
+      BitmapDescriptor.fromAssetImage(imageConfiguration, "images/car.png").then((value)
+      {
+        iconAnimatedMarker = value;
+      });
+    }
+  }
+
+  getDriversLocationUpdatesAtRealTime()
+  {
+    LatLng oldLatLng = LatLng(0, 0);
+
+    // Think of this stream like a thread, it will keep going
+    streamSubscriptionDriverLivePosition = Geolocator.getPositionStream()
+        .listen((Position position)
+    {
+      driverCurrentPosition = position;
+      onlineDriverCurrentPosition = position;
+
+      LatLng latLngLiveDriverPosition = LatLng(
+          onlineDriverCurrentPosition!.latitude,
+          onlineDriverCurrentPosition!.longitude
+      );
+
+      Marker animatedMarker = Marker(
+        markerId: const MarkerId("AnimatedMarker"),
+        position: latLngLiveDriverPosition,
+        icon: iconAnimatedMarker!,
+        infoWindow: const InfoWindow(title: "This is your position"),
+      );
+
+      setState(() {
+        CameraPosition cameraPosition = CameraPosition(target: latLngLiveDriverPosition, zoom: 16);
+        newTripGoogleMapController!.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
+
+        setOfMarkers.removeWhere((element) => element.markerId.value == "AnimatedMarker");
+        setOfMarkers.add(animatedMarker);
+      });
+
+      oldLatLng = latLngLiveDriverPosition;
+      updateDurationTimeAtRealTime();
+
+      // updating driver location in real time in database
+      Map driverLatLngDataMap =
+      {
+        "latitude": onlineDriverCurrentPosition!.latitude.toString(),
+        "longitude": onlineDriverCurrentPosition!.longitude.toString(),
+      };
+      FirebaseDatabase.instance.ref().child("All Ride Requests")
+          .child(widget.userRideRequestDetails!.rideRequestId!)
+          .child("driverLocation")
+          .set(driverLatLngDataMap);
+    });
+  }
+
+  updateDurationTimeAtRealTime() async
+  {
+    if(isRequestDirectionDetails == false)
+    {
+      isRequestDirectionDetails == true;
+
+      if(onlineDriverCurrentPosition == null)
+      {
+        return;
+      }
+
+      var originLatLng = LatLng(
+          onlineDriverCurrentPosition!.latitude,
+          onlineDriverCurrentPosition!.longitude
+      ); // driver current location
+
+      var destinationLatLng;
+
+      if(rideRequestStatus == "accepted")
+      {
+        destinationLatLng = widget.userRideRequestDetails!.originLatLng; // user pickup location
+      }
+      else
+      {
+        destinationLatLng = widget.userRideRequestDetails!.destinationLatLng; // user dropoff location
+      }
+
+      var directionInformation = await AssistantMethods.obtainOriginToDestinationDirectionDetails(originLatLng, destinationLatLng);
+
+      if(directionInformation != null)
+      {
+        setState(() {
+          durationFromOriginToDestination = directionInformation.duration_text!;
+        });
+      }
+
+      isRequestDirectionDetails = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+
+    createDriverIconMarker();
+
     return Scaffold(
       body: Stack(
         children: [
           // google map
           GoogleMap(
+            padding: EdgeInsets.only(bottom: mapPadding),
             mapType: MapType.normal,
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
             zoomControlsEnabled: true,
             zoomGesturesEnabled: true,
             initialCameraPosition: _kGooglePlex,
+            markers: setOfMarkers,
+            circles: setOfCircle,
+            polylines: setOfPolyline,
             onMapCreated: (GoogleMapController controller)
             {
               _controllerGoogleMap.complete(controller);
               newTripGoogleMapController = controller;
 
+              setState(() {
+                mapPadding = 350;
+              });
+
               // dark mode
               blackThemeGoogleMap(newTripGoogleMapController);
+
+              var driverCurrentLatLng = LatLng(
+                  driverCurrentPosition!.latitude,
+                  driverCurrentPosition!.longitude
+              );
+
+              var userPickupLatLng = widget.userRideRequestDetails!.originLatLng;
+
+              drawPolyLineFromOriginToDestination(driverCurrentLatLng, userPickupLatLng!);
+
+              getDriversLocationUpdatesAtRealTime();
             },
           ),
 
@@ -83,8 +354,8 @@ class _NewTripScreenState extends State<NewTripScreen>
 
                     // duration
                     Text(
-                      "Duration: 18 mins",
-                      style: TextStyle(
+                      durationFromOriginToDestination,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.redAccent,
@@ -197,5 +468,38 @@ class _NewTripScreenState extends State<NewTripScreen>
         ],
       ),
     );
+  }
+
+  saveAssignedDriverDetailsToUserRideRequest()
+  {
+    DatabaseReference databaseReference = FirebaseDatabase.instance.ref()
+        .child("All Ride Requests")
+        .child(widget.userRideRequestDetails!.rideRequestId!);
+
+    Map driverLocationDataMap =
+    {
+      "latitude": driverCurrentPosition!.latitude.toString(),
+      "longitude": driverCurrentPosition!.longitude.toString(),
+    };
+
+    databaseReference.child("driverLocation").set(driverLocationDataMap);
+
+    databaseReference.child("status").set("accepted");
+    databaseReference.child("driverId").set(onlineDriverData.id);
+    databaseReference.child("driverName").set(onlineDriverData.name);
+    databaseReference.child("driverPhone").set(onlineDriverData.phone);
+    databaseReference.child("car_details").set(onlineDriverData.car_color.toString() + onlineDriverData.car_model.toString());
+
+    saveRideRequestIdToDriverHistory();
+  }
+
+  saveRideRequestIdToDriverHistory()
+  {
+    DatabaseReference tripsHistoryRef = FirebaseDatabase.instance.ref()
+        .child("drivers")
+        .child(currentFirebaseUser!.uid)
+        .child("tripsHistory");
+    
+    tripsHistoryRef.child(widget.userRideRequestDetails!.rideRequestId!).set(true);
   }
 }

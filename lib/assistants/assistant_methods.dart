@@ -1,6 +1,7 @@
 import 'package:driver_app/assistants/request_assistant.dart';
 import 'package:driver_app/infoHandler/app_info.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter_geofire/flutter_geofire.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
@@ -71,5 +72,21 @@ class AssistantMethods
     directionDetailsInfo.duration_value = responseDirectionAPI["routes"][0]["legs"][0]["duration"]["value"];
 
     return directionDetailsInfo;
+  }
+
+  static pauseLiveLocationUpdates()
+  {
+    streamSubscriptionPosition!.pause();
+    Geofire.removeLocation(currentFirebaseUser!.uid);
+  }
+
+  static resumeLiveLocationUpdates()
+  {
+    streamSubscriptionPosition!.resume();
+    Geofire.setLocation(
+        currentFirebaseUser!.uid,
+        driverCurrentPosition!.latitude,
+        driverCurrentPosition!.longitude
+    );
   }
 }
