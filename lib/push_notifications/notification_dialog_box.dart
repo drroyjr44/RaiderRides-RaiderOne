@@ -5,6 +5,7 @@ import 'package:driver_app/mainScreens/new_trip_screen.dart';
 import 'package:driver_app/models/user_ride_request_information.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class NotificationDialogBox extends StatefulWidget {
@@ -148,7 +149,33 @@ class _NotificationDialogBoxState extends State<NotificationDialogBox> {
                         audioPlayer = AssetsAudioPlayer();
 
                         // cancel the rideRequest
-                        Navigator.pop(context);
+                        FirebaseDatabase.instance.ref()
+                            .child("All Ride Requests")
+                            .child(widget.userRideRequestDetails!.rideRequestId!)
+                            .remove().then((value)
+                        {
+                          FirebaseDatabase.instance.ref()
+                              .child("drivers")
+                              .child(currentFirebaseUser!.uid)
+                              .child("newRideStatus")
+                              .set("idle");
+                        }).then((value)
+                        {
+                          FirebaseDatabase.instance.ref()
+                              .child("drivers")
+                              .child(currentFirebaseUser!.uid)
+                              .child("tripsHistory")
+                              .child(widget.userRideRequestDetails!.rideRequestId!)
+                              .remove();
+                        }).then((value)
+                        {
+                          Fluttertoast.showToast(msg: "Ride Request has been cancelled, successfully. Restart App Now.");
+                        });
+
+                        Future.delayed(const Duration(milliseconds: 2000), ()
+                        {
+                          SystemNavigator.pop();
+                        });
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,

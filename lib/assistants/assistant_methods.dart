@@ -89,4 +89,31 @@ class AssistantMethods
         driverCurrentPosition!.longitude
     );
   }
+
+  static double calculateFareAmountFromOriginToDestination(DirectionDetailsInfo directionDetailsInfo)
+  {
+    double timeTraveledFarePerMinute = (directionDetailsInfo.duration_value! / 60) * 0.1;
+    double distanceTraveledFarePerKilometer = (directionDetailsInfo.duration_value! / 1000) * 0.1;
+    double totalFareAmount = timeTraveledFarePerMinute + distanceTraveledFarePerKilometer;
+
+    if(driverVehicleType == "bike")
+    {
+      double resultFareAmount = (totalFareAmount.truncate()) / 2.0;
+      return resultFareAmount;
+    }
+    else if(driverVehicleType == "uber-go")
+    {
+      return totalFareAmount.truncate().toDouble();
+    }
+    else if(driverVehicleType == "uber-x")
+    {
+      double resultFareAmount = (totalFareAmount.truncate()) * 2.0;
+      return resultFareAmount;
+    }
+    else
+    {
+      return totalFareAmount.truncate().toDouble();
+    }
+    return double.parse(totalFareAmount.toStringAsFixed(2));
+  }
 }

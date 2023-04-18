@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:driver_app/assistants/assistant_methods.dart';
 import 'package:driver_app/global/global.dart';
 import 'package:driver_app/models/user_ride_request_information.dart';
+import 'package:driver_app/widgets/fare_amount_collection_dialog.dart';
 import 'package:driver_app/widgets/progress_dialog.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -457,9 +458,9 @@ class _NewTripScreenState extends State<NewTripScreen>
 
                             showDialog(
                               context: context,
-                              barrierDismissible: false,
-                              builder: (BuildContext c) => ProgressDialog(
-                                  message: "Loading...")
+                              barrierDismissible: true,
+                              builder: (BuildContext context) => ProgressDialog(
+                                  message: "Loading...",),
                             );
 
                             await drawPolyLineFromOriginToDestination(
@@ -470,6 +471,26 @@ class _NewTripScreenState extends State<NewTripScreen>
                             // ignore: use_build_context_synchronously
                             Navigator.pop(context);
                           }
+
+                        else if(rideRequestStatus == "arrived") // start trip condition
+                            {
+                          rideRequestStatus = "on trip";
+                          FirebaseDatabase.instance.ref()
+                              .child("All Ride Requests")
+                              .child(widget.userRideRequestDetails!.rideRequestId!)
+                              .child("status")
+                              .set(rideRequestStatus);
+
+                          setState(() {
+                            buttonTitle = "End Trip"; //end the trip
+                            buttonColor = Colors.red;
+                          });
+                        }
+                        //Driver reached the destination - End Trip Button
+                        else if(rideRequestStatus == "on trip")
+                        {
+                          endTripNow();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: buttonColor,
@@ -497,6 +518,87 @@ class _NewTripScreenState extends State<NewTripScreen>
         ],
       ),
     );
+  }
+
+  endTripNow() async
+  {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext c) => ProgressDialog(message: "Loading...",),
+    );
+
+    //get tripDirectionDetails = distance traveled
+    var currentDriverPositionLatLng = LatLng(
+        onlineDriverCurrentPosition!.latitude,
+        onlineDriverCurrentPosition!.longitude,
+    );
+
+    var tripDirectionDetails = await AssistantMethods.obtainOriginToDestinationDirectionDetails(
+        currentDriverPositionLatLng,
+        widget.userRideRequestDetails!.originLatLng!
+    );
+
+    //fare amount
+    double totalFareAmount = AssistantMethods.calculateFareAmountFromOriginToDestination(tripDirectionDetails!);
+
+    FirebaseDatabase.instance.ref()
+        .child("All Ride Requests")
+        .child(widget.userRideRequestDetails!.rideRequestId!)
+        .child("fareAmount")
+        .set(totalFareAmount.toString());
+
+    FirebaseDatabase.instance.ref()
+        .child("All Ride Requests")
+        .child(widget.userRideRequestDetails!.rideRequestId!)
+        .child("status")
+        .set("ended");
+
+    streamSubscriptionDriverLivePosition!.cancel();
+
+    Navigator.pop(context);
+
+    // display fare amount in dialog box
+    showDialog(
+        context: context,
+        builder: (BuildContext context)=> FareAmountCollectionDialog(
+          totalFareAmount: totalFareAmount,
+        ),
+    );
+
+    // save fare amount to driver total earnings
+    saveFareAmountToDriverEarnings(totalFareAmount);
+  }
+
+  saveFareAmountToDriverEarnings(double totalFareAmount)
+  {
+    FirebaseDatabase.instance.ref()
+        .child("drivers")
+        .child(currentFirebaseUser!.uid)
+        .child("earnings")
+        .once()
+        .then((snap)
+    {
+      if (snap.snapshot.value != null) // earnings sub child exists
+      {
+        double oldEarnings = double.parse(snap.snapshot.value.toString());
+        double driverTotalEarnings = totalFareAmount + oldEarnings;
+
+        FirebaseDatabase.instance.ref()
+            .child("drivers")
+            .child(currentFirebaseUser!.uid)
+            .child("earnings")
+            .set(driverTotalEarnings.toString());
+      }
+      else // earnings sub child does not exist
+      {
+        FirebaseDatabase.instance.ref()
+            .child("drivers")
+            .child(currentFirebaseUser!.uid)
+            .child("earnings")
+            .set(totalFareAmount.toString());
+      }
+    });
   }
 
   saveAssignedDriverDetailsToUserRideRequest()
