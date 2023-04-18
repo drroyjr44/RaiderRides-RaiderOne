@@ -264,7 +264,7 @@ class _NewTripScreenState extends State<NewTripScreen>
       {
         destinationLatLng = widget.userRideRequestDetails!.originLatLng; // user pickup location
       }
-      else
+      else //arrived
       {
         destinationLatLng = widget.userRideRequestDetails!.destinationLatLng; // user dropoff location
       }
@@ -323,6 +323,7 @@ class _NewTripScreenState extends State<NewTripScreen>
 
               drawPolyLineFromOriginToDestination(driverCurrentLatLng, userPickupLatLng!);
 
+              // Heart of the Map and updating at Real time (listener and runs indefinitely)
               getDriversLocationUpdatesAtRealTime();
             },
           ),
@@ -438,9 +439,37 @@ class _NewTripScreenState extends State<NewTripScreen>
                     const SizedBox(width: 24.0,),
 
                     ElevatedButton.icon(
-                      onPressed: ()
+                      onPressed: () async
                       {
+                        if(rideRequestStatus == "accepted") // TTU driver has arrived that the user location
+                          {
+                          rideRequestStatus = "arrived";
+                            FirebaseDatabase.instance.ref()
+                              .child("All Ride Requests")
+                              .child(widget.userRideRequestDetails!.rideRequestId!)
+                              .child("status")
+                                .set(rideRequestStatus);
 
+                            setState(() {
+                              buttonTitle = "Start Trip"; //starts the trip
+                              buttonColor = Colors.lightGreenAccent;
+                            });
+
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (BuildContext c) => ProgressDialog(
+                                  message: "Loading...")
+                            );
+
+                            await drawPolyLineFromOriginToDestination(
+                              widget.userRideRequestDetails!.originLatLng!,
+                              widget.userRideRequestDetails!.destinationLatLng!
+                            );
+
+                            // ignore: use_build_context_synchronously
+                            Navigator.pop(context);
+                          }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: buttonColor,

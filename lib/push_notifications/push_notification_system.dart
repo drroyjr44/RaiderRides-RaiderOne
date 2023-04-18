@@ -71,6 +71,7 @@ class PushNotificationSystem
         String userPhone = (snapData.snapshot.value! as Map)["userPhone"];
 
         String? rideRequestId = snapData.snapshot.key;
+        print(rideRequestId);
 
         UserRideRequestInformation userRideRequestDetails = UserRideRequestInformation();
 
